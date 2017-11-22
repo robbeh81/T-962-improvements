@@ -23,6 +23,15 @@ const profile am4300profile = {
 	}
 };
 
+// TermoPasty low-temp lead-free profile
+const profile pbprofile = {
+	"Sn62Pb36Ag2", {
+		 50, 50, 53, 60, 75, 90,105,118,130,140,145,147,149,151,153,155, // 0-150s
+		157,160,165,171,179,189,200,210,212,200,189,179,164,149,134,119, // 
+		104, 89, 77, 68, 59, 48, 40, 35, 32,  0,  0,  0,  0,  0,  0,  0  //
+	}
+};
+
 // NC-31 low-temp lead-free profile
 const profile nc31profile = {
 	"NC-31 LOW-TEMP LF", {
@@ -70,6 +79,7 @@ ramprofile ee1 = { "CUSTOM #1" };
 ramprofile ee2 = { "CUSTOM #2" };
 
 const profile* profiles[] = {
+	&pbprofile,
 	&syntechlfprofile,
 	&nc31profile,
 	&am4300profile,
