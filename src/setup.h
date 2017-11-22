@@ -6,7 +6,7 @@ typedef struct {
 	const NVItem_t nvval;
 	const uint8_t minval;
 	const uint8_t maxval;
-	const int offset;
+	const uint8_t offset;
 	const float multiplier;
 } setupMenuStruct;
 

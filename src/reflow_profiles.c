@@ -126,7 +126,7 @@ void Reflow_ValidateNV(void) {
 
 	if (NV_GetConfig(REFLOW_USE_EXT_TC) == 255) {
 		// Default 
-		NV_SetConfig(REFLOW_STANDBY_TEMP, 1);
+		NV_SetConfig(REFLOW_USE_EXT_TC, 1);
 	}
 
 	if (NV_GetConfig(REFLOW_BAKE_SETPOINT_H) == 255 || NV_GetConfig(REFLOW_BAKE_SETPOINT_L) == 255) {
