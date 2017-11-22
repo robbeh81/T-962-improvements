@@ -31,8 +31,6 @@
 #include "sensor.h"
 #include "reflow.h"
 
-// Standby temperature in degrees Celsius
-#define STANDBYTEMP (50)
 
 // 250ms between each run
 #define PID_TIMEBASE (250)
@@ -45,6 +43,7 @@ uint16_t intsetpoint;
 int bake_timer = 0;
 
 float avgtemp;
+float inner_avgtemp;
 
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
@@ -62,26 +61,27 @@ static int32_t Reflow_Work(void) {
 	avgtemp = Sensor_GetTemp(TC_AVERAGE);
 
 	const char* modestr = "UNKNOWN";
+	float standbytemp = NV_GetConfig(REFLOW_STOP_TEMP) + 46;
 
 	// Depending on mode we should run this with different parameters
 	if (mymode == REFLOW_STANDBY || mymode == REFLOW_STANDBYFAN) {
-		intsetpoint = STANDBYTEMP;
-		// Cool to standby temp but don't heat to get there
-		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
+		intsetpoint = standbytemp;
+		// Cool to inner oven standby temp but don't heat to get there
+		Reflow_Run(0, inner_avgtemp, inner_avgtemp, &heat, &fan, intsetpoint);
 		heat = 0;
 
 		// Suppress slow-running fan in standby
-		if (mymode == REFLOW_STANDBY && avgtemp < (float)STANDBYTEMP) {
+		if (mymode == REFLOW_STANDBY && inner_avgtemp < standbytemp) {
 			 fan = 0;
 		}
 		modestr = "STANDBY";
 
 	} else if(mymode == REFLOW_BAKE) {
-		reflowdone = Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint) ? 1 : 0;
+		reflowdone = Reflow_Run(0, avgtemp, inner_avgtemp, &heat, &fan, intsetpoint) ? 1 : 0;
 		modestr = "BAKE";
 
 	} else if(mymode == REFLOW_REFLOW) {
-		reflowdone = Reflow_Run(ticks, avgtemp, &heat, &fan, 0) ? 1 : 0;
+		reflowdone = Reflow_Run(ticks, avgtemp, inner_avgtemp, &heat, &fan, 0) ? 1 : 0;
 		modestr = "REFLOW";
 
 	} else {
@@ -167,7 +167,6 @@ void Reflow_Init(void) {
 	Reflow_LoadCustomProfiles();
 
 	Reflow_ValidateNV();
-	Sensor_ValidateNV();
 
 	Reflow_LoadSetpoint();
 
@@ -210,6 +209,10 @@ int16_t Reflow_GetActualTemp(void) {
 	return (int)Sensor_GetTemp(TC_AVERAGE);
 }
 
+int16_t Reflow_GetInnerTemp(void) {
+	return (int)Sensor_GetTemp(TC_INNER_AVERAGE);
+}
+
 uint8_t Reflow_IsDone(void) {
 	return reflowdone;
 }
@@ -236,8 +239,14 @@ int Reflow_GetTimeLeft(void) {
 }
 
 // returns -1 if the reflow process is done.
-int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
+int32_t Reflow_Run(uint32_t thetime, float meastemp, float innertemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
 	int32_t retval = 0;
+
+	if (innertemp >= NV_GetConfig(REFLOW_STOP_TEMP) + 46) {
+		retval = -1;
+		printf("\n *** EMERGENCY STOP *** \n Excessive heating detected. \n **********************");
+		return retval;
+	}
 
 	if (manualsetpoint) {
 		PID.mySetpoint = (float)manualsetpoint;

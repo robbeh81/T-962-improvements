@@ -114,6 +114,21 @@ void Reflow_ValidateNV(void) {
 		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8);
 	}
 
+	if (NV_GetConfig(REFLOW_STOP_TEMP) == 255) {
+		// Default Max. Temp.
+		NV_SetConfig(REFLOW_STOP_TEMP, 214);
+	}
+
+	if (NV_GetConfig(REFLOW_STANDBY_TEMP) == 255) {
+		// Default Standby Temp.
+		NV_SetConfig(REFLOW_STANDBY_TEMP, 40);
+	}
+
+	if (NV_GetConfig(REFLOW_USE_EXT_TC) == 255) {
+		// Default 
+		NV_SetConfig(REFLOW_STANDBY_TEMP, 1);
+	}
+
 	if (NV_GetConfig(REFLOW_BAKE_SETPOINT_H) == 255 || NV_GetConfig(REFLOW_BAKE_SETPOINT_L) == 255) {
 		NV_SetConfig(REFLOW_BAKE_SETPOINT_H, SETPOINT_DEFAULT >> 8);
 		NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)SETPOINT_DEFAULT);

@@ -26,10 +26,9 @@
 setupMenuStruct setupmenu[] = {
 	{"Min fan speed    %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
 	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
-	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
-	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
-	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
-	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
+	{"Max. Int. Temp. %4.0fC", REFLOW_STOP_TEMP, 154, 254, 46, 1.0f},
+	{"Standby Temp.   %4.0fC", REFLOW_STANDBY_TEMP, 10, 80, 0, 1.0f},
+	{"Use ext. TC as FB %1.0f", REFLOW_USE_EXT_TC, 0, 1, 0, 1.0f},
 };
 #define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 

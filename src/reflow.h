@@ -21,12 +21,13 @@ void Reflow_SetMode(ReflowMode_t themode);
 void Reflow_SetSetpoint(uint16_t thesetpoint);
 void Reflow_LoadSetpoint(void);
 int16_t Reflow_GetActualTemp(void);
+int16_t Reflow_GetInnerTemp(void);
 uint8_t Reflow_IsDone(void);
 int Reflow_IsPreheating(void);
 uint16_t Reflow_GetSetpoint(void);
 void Reflow_SetBakeTimer(int seconds);
 int Reflow_GetTimeLeft(void);
-int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint);
+int32_t Reflow_Run(uint32_t thetime, float meastemp, float innertemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint);
 void Reflow_ToggleStandbyLogging(void);
 
 #endif /* REFLOW_H_ */

@@ -317,7 +317,7 @@ static int32_t Main_Work(void) {
 		}
 
 		LCD_FB_Clear();
-		len = snprintf(buf, sizeof(buf), "Setup/calibration");
+		len = snprintf(buf, sizeof(buf), "SETUP");
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT6X6);
 		y += 7;
 
@@ -422,7 +422,8 @@ static int32_t Main_Work(void) {
 
 	} else if (mode == MAIN_BAKE) {
 		LCD_FB_Clear();
-		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT6X6);
+		len = snprintf(buf, sizeof(buf), "MANUAL/BAKE MODE");
+		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 0, FONT6X6);
 
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
 		if (keyrepeataccel < 1) keyrepeataccel = 1;
@@ -490,7 +491,7 @@ static int32_t Main_Work(void) {
 		if (timer > 0) {
 			int time_left = Reflow_GetTimeLeft();
 			if (Reflow_IsPreheating()) {
-				len = snprintf(buf, sizeof(buf), "PREHEAT");
+				len = snprintf(buf, sizeof(buf), "HEAT");
 			} else if (Reflow_IsDone() || time_left < 0) {
 				len = snprintf(buf, sizeof(buf), "DONE");
 			} else {
@@ -499,24 +500,45 @@ static int32_t Main_Work(void) {
 			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), y, FONT6X6);
 		}
 
-		len = snprintf(buf, sizeof(buf), "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
+		len = snprintf(buf, sizeof(buf), "FB %3.1f`C", Sensor_GetTemp(TC_AVERAGE));
+		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | INVERT);
 
 		y = 34;
-		len = snprintf(buf, sizeof(buf), "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
-		len = snprintf(buf, sizeof(buf), "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
+		len = snprintf(buf, sizeof(buf), "  L %3.1f`C", Sensor_GetTemp(TC_LEFT));
+		if (Sensor_GetFeedbackTC() & 0x08) {
+			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | INVERT);
+		}
+		else {
+			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
+		}
+		len = snprintf(buf, sizeof(buf), "  R %3.1f`C", Sensor_GetTemp(TC_RIGHT));
 		LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6);
+		if (Sensor_GetFeedbackTC() & 0x04) {
+			LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6 | INVERT);
+		}
+		else {
+			LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6);
+		}
 
-		if (Sensor_IsValid(TC_EXTRA1) || Sensor_IsValid(TC_EXTRA1)) {
+		if (Sensor_IsValid(TC_EXTRA1) || Sensor_IsValid(TC_EXTRA2)) {
 			y = 42;
 			if (Sensor_IsValid(TC_EXTRA1)) {
-				len = snprintf(buf, sizeof(buf), " X1 %3.1f`", Sensor_GetTemp(TC_EXTRA1));
-				LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
+				len = snprintf(buf, sizeof(buf), " X1 %3.1f`C", Sensor_GetTemp(TC_EXTRA1));
+				if (Sensor_GetFeedbackTC() & 0x02) {
+					LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | INVERT);
+				}
+				else {
+					LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
+				}
 			}
 			if (Sensor_IsValid(TC_EXTRA2)) {
-				len = snprintf(buf, sizeof(buf), " X2 %3.1f`", Sensor_GetTemp(TC_EXTRA2));
-				LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6);
+				len = snprintf(buf, sizeof(buf), " X2 %3.1f`C", Sensor_GetTemp(TC_EXTRA2));
+				if (Sensor_GetFeedbackTC() & 0x01) {
+					LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6 | INVERT);
+				}
+				else {
+					LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6);
+				}
 			}
 		}
 
@@ -526,7 +548,7 @@ static int32_t Main_Work(void) {
 
 		y += 8;
 		if (Sensor_IsValid(TC_COLD_JUNCTION)) {
-			len = snprintf(buf, sizeof(buf), "%3.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
+			len = snprintf(buf, sizeof(buf), "%3.1f`C", Sensor_GetTemp(TC_COLD_JUNCTION));
 		} else {
 			len = snprintf(buf, sizeof(buf), "NOT PRESENT");
 		}
@@ -608,8 +630,8 @@ static int32_t Main_Work(void) {
 	} else { // Main menu
 		LCD_FB_Clear();
 
-		len = snprintf(buf, sizeof(buf),"MAIN MENU");
-		LCD_disp_str((uint8_t*)buf, len, 0, 6 * 0, FONT6X6);
+		len = snprintf(buf, sizeof(buf), ">> MAIN MENU <<");
+		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 0, FONT6X6);
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 8 * 1, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"ABOUT", 5, 14, 8 * 1, FONT6X6);
 		LCD_disp_str((uint8_t*)"F2", 2, 0, 8 * 2, FONT6X6 | INVERT);
@@ -618,13 +640,13 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 14, 8 * 3, FONT6X6);
 		LCD_disp_str((uint8_t*)"F4", 2, 0, 8 * 4, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"SELECT PROFILE", 14, 14, 8 * 4, FONT6X6);
-		LCD_disp_str((uint8_t*)"S", 1, 3, 8 * 5, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)" S ", 1, 3, 8 * 5, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 14, 8 * 5, FONT6X6);
 
 		len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 8 * 6, FONT6X6 | INVERT);
 
-		len = snprintf(buf,sizeof(buf), "OVEN TEMPERATURE %d`", Reflow_GetActualTemp());
+		len = snprintf(buf,sizeof(buf), "Feedback %d`C/Internal %d`C", Reflow_GetActualTemp(), Reflow_GetInnerTemp());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 64 - 6, FONT6X6);
 
 		// Make sure reflow complete beep is silenced when pressing any key

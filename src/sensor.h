@@ -4,6 +4,7 @@
 typedef enum eTempSensor {
 	TC_COLD_JUNCTION=0,
 	TC_AVERAGE,
+	TC_INNER_AVERAGE,
 	TC_LEFT,
 	TC_RIGHT,
 	TC_EXTRA1,
@@ -16,6 +17,7 @@ void Sensor_ValidateNV(void);
 void Sensor_DoConversion(void);
 
 uint8_t Sensor_ColdjunctionPresent(void);
+uint8_t Sensor_GetFeedbackTC(void);
 
 float Sensor_GetTemp(TempSensor_t sensor);
 uint8_t Sensor_IsValid(TempSensor_t sensor);

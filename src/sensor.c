@@ -2,6 +2,7 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "adc.h"
 #include "t962.h"
 #include "onewire.h"
@@ -9,16 +10,6 @@
 #include "nvstorage.h"
 
 #include "sensor.h"
-
-/*
-* Normally the control input is the average of the first two TCs.
-* By defining this any TC that has a readout 5C (or more) higher
-* than the TC0 and TC1 average will be used as control input instead.
-* Use if you have very sensitive components. Note that this will also
-* kick in if the two sides of the oven has different readouts, as the
-* code treats all four TCs the same way.
-*/
-//#define MAXTEMPOVERRIDE
 
 // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcgainadj[2];
@@ -31,47 +22,17 @@ uint8_t cjsensorpresent = 0;
 
 // The feedback temperature
 float avgtemp;
+float inner_avgtemp;
 float coldjunction;
-
-void Sensor_ValidateNV(void) {
-	int temp;
-
-	temp = NV_GetConfig(TC_LEFT_GAIN);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_LEFT_GAIN, temp); // Default unity gain
-	}
-	adcgainadj[0] = ((float)temp) * 0.01f;
-
-	temp = NV_GetConfig(TC_RIGHT_GAIN);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_RIGHT_GAIN, temp); // Default unity gain
-	}
-	adcgainadj[1] = ((float)temp) * 0.01f;
-
-	temp = NV_GetConfig(TC_LEFT_OFFSET);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_LEFT_OFFSET, temp); // Default +/-0 offset
-	}
-	adcoffsetadj[0] = ((float)(temp - 100)) * 0.25f;
-
-	temp = NV_GetConfig(TC_RIGHT_OFFSET);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_RIGHT_OFFSET, temp); // Default +/-0 offset
-	}
-	adcoffsetadj[1] = ((float)(temp - 100)) * 0.25f;
-}
-
+uint8_t TCfeedback;
 
 void Sensor_DoConversion(void) {
 	uint16_t temp[2];
 	/*
 	* These are the temperature readings we get from the thermocouple interfaces
 	* Right now it is assumed that if they are indeed present the first two
-	* channels will be used as feedback
+	* channels will be used as feedback. If TC Extra 1 and/or TC Extra 2 are present, 
+	* they will be used as feedback variable instead. 
 	*/
 	float tctemp[4], tccj[4];
 	uint8_t tcpresent[4];
@@ -100,14 +61,42 @@ void Sensor_DoConversion(void) {
 
 	// Assume no CJ sensor
 	cjsensorpresent = 0;
-	if (tcpresent[0] && tcpresent[1]) {
+
+	// We have attached one or two additional TCs, use their reading as feedback.
+	if ((tcpresent[0] && tcpresent[1]) && (tcpresent[2] || tcpresent[3]) && NV_GetConfig(REFLOW_USE_EXT_TC)) {  
+		if (tcpresent[2] && tcpresent[3]) {
+			avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;
+			coldjunction = (tccj[0] + tccj[1] + tccj[2] + tccj[3]) / 4.0f;
+			TCfeedback = 0x03;
+			}
+		else if (tcpresent[2]) {
+			avgtemp = tctemp[2];
+			coldjunction = (tccj[0] + tccj[1] + tccj[2]) / 3.0f;
+			TCfeedback = 0x02;			
+		}
+		else if (tcpresent[3]) {
+			avgtemp = tctemp[3];
+			coldjunction = (tccj[0] + tccj[1] + tccj[3]) / 3.0f;	
+			TCfeedback = 0x01;		
+		}
+		temperature[0] = tctemp[0];
+		temperature[1] = tctemp[1];
+		inner_avgtemp = temperature[0] + temperature[1] / 2.0f;
+		tempvalid |= 0x03;
+		cjsensorpresent = 1;
+	}
+	// We only have the built-in TCs
+	else if (tcpresent[0] && tcpresent[1]) {  
 		avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
 		temperature[0] = tctemp[0];
 		temperature[1] = tctemp[1];
+		inner_avgtemp = temperature[0] + temperature[1] / 2.0f;
 		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
+		TCfeedback = 0x0c;
 		cjsensorpresent = 1;
-	} else {
+	}
+	else {
 		// If the external TC interface is not present we fall back to the
 		// built-in ADC, with or without compensation
 		coldjunction = OneWire_GetTempSensorReading();
@@ -124,31 +113,19 @@ void Sensor_DoConversion(void) {
 		temperature[1] = ((float)temp[1]) / 16.0f;
 
 		// Gain adjust
-		temperature[0] *= adcgainadj[0];
-		temperature[1] *= adcgainadj[1];
+		temperature[0] *= 1.0f;
+		temperature[1] *= 1.0f;
 
 		// Offset adjust
-		temperature[0] += coldjunction + adcoffsetadj[0];
-		temperature[1] += coldjunction + adcoffsetadj[1];
+		temperature[0] += coldjunction + 0.0f;
+		temperature[1] += coldjunction + 0.0f;
 
 		tempvalid |= 0x03;
 
 		avgtemp = (temperature[0] + temperature[1]) / 2.0f;
+		TCfeedback = 0x0c;
+		inner_avgtemp = temperature[0] + temperature[1] / 2.0f;
 	}
-
-#ifdef MAXTEMPOVERRIDE
-	// If one of the temperature sensors reports higher than 5C above
-	// the average, use that as control input
-	float newtemp = avgtemp;
-	for (int i=0; i < 4; i++) {
-		if (tcpresent[i] && temperature[i] > (avgtemp + 5.0f) && temperature[i] > newtemp) {
-			newtemp = temperature[i];
-		}
-	}
-	if (avgtemp != newtemp) {
-		avgtemp = newtemp;
-	}
-#endif
 }
 
 uint8_t Sensor_ColdjunctionPresent(void) {
@@ -161,11 +138,17 @@ float Sensor_GetTemp(TempSensor_t sensor) {
 		return coldjunction;
 	} else if(sensor == TC_AVERAGE) {
 		return avgtemp;
+	} else if(sensor == TC_INNER_AVERAGE) {
+		return inner_avgtemp;
 	} else if(sensor < TC_NUM_ITEMS) {
 		return temperature[sensor - TC_LEFT];
 	} else {
 		return 0.0f;
 	}
+}
+
+uint8_t Sensor_GetFeedbackTC(void) {
+	return TCfeedback;
 }
 
 uint8_t Sensor_IsValid(TempSensor_t sensor) {
