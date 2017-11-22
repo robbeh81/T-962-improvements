@@ -1,3 +1,5 @@
+#define EXT_TC_ONE_WIRE  // Use MAX31850K One Wire Interface
+//#define EXT_TC_SPI     // Use MAX31855 /w I2C to SPI bridge
 
 #include "LPC214x.h"
 #include <stdint.h>
@@ -5,8 +7,12 @@
 #include <string.h>
 #include "adc.h"
 #include "t962.h"
-#include "onewire.h"
-#include "max31855.h"
+#ifdef EXT_TC_ONE_WIRE
+	#include "onewire.h"
+#endif
+#ifdef EXT_TC_SPI
+	#include "max31855.h"
+#endif
 #include "nvstorage.h"
 
 #include "sensor.h"
@@ -37,6 +43,7 @@ void Sensor_DoConversion(void) {
 	float tctemp[4], tccj[4];
 	uint8_t tcpresent[4];
 	tempvalid = 0; // Assume no valid readings;
+#ifdef EXT_TC_ONE_WIRE
 	for (int i = 0; i < 4; i++) { // Get 4 TC channels
 		tcpresent[i] = OneWire_IsTCPresent(i);
 		if (tcpresent[i]) {
@@ -46,18 +53,22 @@ void Sensor_DoConversion(void) {
 				temperature[i] = tctemp[i];
 				tempvalid |= (1 << i);
 			}
-		} else {
-			tcpresent[i] = SPI_IsTCPresent(i);
-			if (tcpresent[i]) {
-				tctemp[i] = SPI_GetTCReading(i);
-				tccj[i] = SPI_GetTCColdReading(i);
-				if (i > 1) {
-					temperature[i] = tctemp[i];
-					tempvalid |= (1 << i);
-				}
+		}
+	}
+#endif
+#ifdef EXT_TC_SPI
+	for (int i = 0; i < 4; i++) { // Get 4 TC channels
+		tcpresent[i] = SPI_IsTCPresent(i);
+		if (tcpresent[i]) {
+			tctemp[i] = SPI_GetTCReading(i);
+			tccj[i] = SPI_GetTCColdReading(i);
+			if (i > 1) {
+				temperature[i] = tctemp[i];
+				tempvalid |= (1 << i);
 			}
 		}
 	}
+#endif
 
 	// Assume no CJ sensor
 	cjsensorpresent = 0;

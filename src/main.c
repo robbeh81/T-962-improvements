@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#define EXT_TC_ONE_WIRE  // Use MAX31850K One Wire Interface
+//#define EXT_TC_SPI     // Use MAX31855 /w I2C to SPI bridge
 
 #include "LPC214x.h"
 #include <stdint.h>
@@ -25,7 +27,6 @@
 #include "lcd.h"
 #include "io.h"
 #include "sched.h"
-#include "onewire.h"
 #include "adc.h"
 #include "i2c.h"
 #include "rtc.h"
@@ -38,9 +39,15 @@
 #include "nvstorage.h"
 #include "version.h"
 #include "vic.h"
-#include "max31855.h"
 #include "systemfan.h"
 #include "setup.h"
+#ifdef EXT_TC_ONE_WIRE
+	#include "onewire.h"
+#endif
+#ifdef EXT_TC_SPI
+	#include "max31855.h"
+#endif
+
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -126,8 +133,12 @@ int main(void) {
 	Buzzer_Init();
 	ADC_Init();
 	RTC_Init();
+#ifdef EXT_TC_ONE_WIRE
 	OneWire_Init();
+#endif
+#ifdef EXT_TC_SPI
 	SPI_TC_Init();
+#endif
 	Reflow_Init();
 	SystemFan_Init();
 
